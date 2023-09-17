@@ -265,6 +265,8 @@ lines(test$V3, fore.dlm2$forecasts,col="orange")
 points(test$V3, fore.ardl$forecasts,col="green")
 lines(test$V3, fore.ardl$forecasts,col="green")
 legend("topleft",c("aktual", "koyck","DLM 1","DLM 2", "autoregressive"), lty=1, col=c("black","red","blue","orange","green"), cex=0.8)
+dev.copy(png, "Perbandingan Setiap Model dengan Data Aktual")
+dev.off()
 ```
 
 Berdasarkan plot tersebut, terlihat bahwa setiap plot cenderung mendekati data aktualnya , sehingga dapat disimpulkan semua model dapat digunakan dengan baik. 
