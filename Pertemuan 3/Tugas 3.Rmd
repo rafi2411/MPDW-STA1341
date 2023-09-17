@@ -142,3 +142,130 @@ mape.ardl
 #akurasi data training
 GoF(model.ardl)
 ```
+
+### *Lag* Optimum
+
+```{r}
+#penentuan lag optimum
+model.ardl.opt <- ardlBoundOrders(data = data.frame(data), ic = "AIC", 
+                                  formula = V2 ~ V3 )
+min_p=c()
+for(i in 1:6){
+  min_p[i]=min(model.ardl.opt$Stat.table[[i]])
+}
+q_opt=which(min_p==min(min_p, na.rm = TRUE))
+p_opt=which(model.ardl.opt$Stat.table[[q_opt]] == 
+              min(model.ardl.opt$Stat.table[[q_opt]], na.rm = TRUE))
+data.frame("q_optimum" = q_opt, "p_optimum" = p_opt, 
+           "AIC"=model.ardl.opt$min.Stat)
+```
+
+Dari tabel di atas, dapat terlihat bahwa nilai AIC terendah didapat ketika $p=15$ dan $q=1$, yaitu sebesar `6501.704`. Artinya, model autoregressive optimum didapat ketika $p=15$ dan $q=1$.
+
+Selanjutnya dapat dilakukan pemodelan dengan nilai $p$ dan $q$ optimum seperti inisialisasi di langkah sebelumnya.
+
+## Pemodelan DLM & ARDL dengan Library `dynlm`
+
+Pemodelan regresi dengan peubah *lag* tidak hanya dapat dilakukan dengan fungsi pada *packages* `dLagM` , tetapi terdapat *packages* `dynlm` yang dapat digunakan. Fungsi `dynlm` secara umum adalah sebagai berikut.
+
+```{r, eval=FALSE}
+dynlm(formula, data, subset, weights, na.action, method = "qr",
+  model = TRUE, x = FALSE, y = FALSE, qr = TRUE, singular.ok = TRUE,
+  contrasts = NULL, offset, start = NULL, end = NULL, ...)
+```
+
+Untuk menentukan `formula` model yang akan digunakan, tersedia fungsi tambahan yang memungkinkan spesifikasi dinamika (melalui `d()` dan `L()`) atau pola linier/siklus dengan mudah (melalui `trend()`, `season()`, dan `harmon()`). Semua fungsi formula baru mengharuskan argumennya berupa objek deret waktu (yaitu, `"ts"` atau `"zoo"`).
+
+```{r}
+#sama dengan model dlm q=1
+cons_lm1 <- dynlm(V2 ~ V3+L(V3),data = train.ts)
+#sama dengan model ardl p=1 q=0
+cons_lm2 <- dynlm(V2 ~ V3+L(V2),data = train.ts)
+#sama dengan ardl p=1 q=1
+cons_lm3 <- dynlm(V2 ~ V3+L(V3)+L(V2),data = train.ts)
+#sama dengan dlm p=2
+cons_lm4 <- dynlm(V2 ~ V3+L(V3)+L(V3,2),data = train.ts)
+```
+
+### Ringkasan Model
+
+```{r}
+summary(cons_lm1)
+summary(cons_lm2)
+summary(cons_lm3)
+summary(cons_lm4)
+```
+
+### SSE
+
+```{r}
+deviance(cons_lm1)
+deviance(cons_lm2)
+deviance(cons_lm3)
+deviance(cons_lm4)
+```
+
+### Uji Diagnostik
+
+```{r}
+#uji model
+if(require("lmtest")) encomptest(cons_lm1, cons_lm2)
+```
+
+#### Autokorelasi
+
+```{r}
+#durbin watson
+dwtest(cons_lm1)
+dwtest(cons_lm2)
+dwtest(cons_lm3)
+dwtest(cons_lm4)
+```
+
+#### Heterogenitas
+
+```{r}
+bptest(cons_lm1)
+bptest(cons_lm2)
+bptest(cons_lm3)
+bptest(cons_lm4)
+```
+
+#### Kenormalan
+
+```{r}
+shapiro.test(residuals(cons_lm1))
+shapiro.test(residuals(cons_lm2))
+shapiro.test(residuals(cons_lm3))
+shapiro.test(residuals(cons_lm4))
+```
+
+## Perbandingan Model
+
+```{r}
+akurasi <- matrix(c(mape.koyck, mape.dlm, mape.dlm2, mape.ardl))
+row.names(akurasi)<- c("Koyck","DLM 1","DLM 2","Autoregressive")
+colnames(akurasi) <- c("MAPE")
+akurasi
+```
+
+Berdasarkan nilai MAPE, model paling optimum didapat pada Model DLM 1 karena memiliki nilai MAPE yang terkecil.
+
+### Plot
+
+```{r}
+par(mfrow=c(1,1))
+plot(test$V3, test$V2, type="b", col="black")
+points(test$V3, fore.koyck$forecasts,col="red")
+lines(test$V3, fore.koyck$forecasts,col="red")
+points(test$V3, fore.dlm$forecasts,col="blue")
+lines(test$V3, fore.dlm$forecasts,col="blue")
+points(test$V3, fore.dlm2$forecasts,col="orange")
+lines(test$V3, fore.dlm2$forecasts,col="orange")
+points(test$V3, fore.ardl$forecasts,col="green")
+lines(test$V3, fore.ardl$forecasts,col="green")
+legend("topleft",c("aktual", "koyck","DLM 1","DLM 2", "autoregressive"), lty=1, col=c("black","red","blue","orange","green"), cex=0.8)
+```
+
+Berdasarkan plot tersebut, terlihat bahwa setiap plot cenderung mendekati data aktualnya , sehingga dapat disimpulkan semua model dapat digunakan dengan baik. 
+
