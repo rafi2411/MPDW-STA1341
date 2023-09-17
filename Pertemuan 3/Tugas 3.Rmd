@@ -1,0 +1,144 @@
+---
+title: "Tugas 3"
+author: "Rafi AKbar Wibawa"
+date: "2023-09-17"
+output: html_document
+---
+
+```{r, echo=FALSE}
+#PACKAGES
+#install.packages("dLagM") #install jika belum ada
+#install.packages("dynlm") #install jika belum ada
+#install.packages("MLmetrics") #install jika belum ada
+library(dLagM)
+library(dynlm)
+library(MLmetrics)
+library(lmtest)
+library(car)
+library(rio)
+```
+
+```{r}
+data <- import("https://raw.githubusercontent.com/rafi2411/MPDW-STA1341/main/Pertemuan%203/Data/Data%20Mentah%202.csv")
+#SPLIT DATA
+n <- 75/100*nrow(data)
+train<-data[1:n,]
+test<-data[(n+1):nrow(data),]
+```
+
+```{r}
+#data time series
+train.ts<-ts(train)
+test.ts<-ts(test)
+data.ts<-ts(data)
+```
+
+### Pemodelan Koyck
+
+
+```{r}
+#MODEL KOYCK
+model.koyck <- koyckDlm(x = train$V3, y = train$V2)
+summary(model.koyck)
+AIC(model.koyck)
+BIC(model.koyck)
+```
+### Peramalan dan Akurasi Koyck
+```{r}
+fore.koyck <- forecast(model = model.koyck, x=test$V3, h=nrow(test))
+fore.koyck
+mape.koyck <- MAPE(fore.koyck$forecasts, test$V2)
+#akurasi data training
+GoF(model.koyck)
+```
+
+## Regression with Distributed Lag
+
+### Pemodelan (Lag=2)
+
+```{r}
+model.dlm <- dlm(x = train$V3,y = train$V2 , q = 2)
+summary(model.dlm)
+AIC(model.dlm)
+BIC(model.dlm)
+```
+
+Dari hasil diatas, didapat bahwa $P-value$ dari $x_{t}<0.05$. Hal ini menunjukkan bahwa $x_{t}$ berpengaruh signifikan terhadap $y$. Adapun model keseluruhan yang terbentuk adalah sebagai berikut
+
+$$
+\hat{Y_t}=2.471+0.991X_t-0.006518X_{t-1}+0.007864X_{t-2}
+$$
+
+### Peramalan dan Akurasi
+
+Berikut merupakan hasil peramalan $y$ untuk 116 periode kedepan
+
+```{r}
+fore.dlm <- forecast(model = model.dlm, x=test$V3, h=nrow(test))
+fore.dlm
+mape.dlm <- MAPE(fore.dlm$forecasts, test$V2)
+#akurasi data training
+GoF(model.dlm)
+```
+
+### *Lag* Optimum
+
+```{r}
+#penentuan lag optimum 
+finiteDLMauto(formula = V2 ~ V3,
+              data = data.frame(train), q.min = 1, q.max = 10,
+              model.type = "dlm", error.type = "AIC", trace = FALSE)
+```
+
+Berdasarkan output tersebut, lag optimum didapatkan ketika lag=6. Selanjutnya dilakukan pemodelan untuk lag=6
+
+```{r}
+model.dlm2 <- dlm(x = train$V3,y = train$V2 , q = 10)
+summary(model.dlm2)
+AIC(model.dlm2)
+BIC(model.dlm2)
+```
+
+```{r}
+#peramalan dan akurasi
+fore.dlm2 <- forecast(model = model.dlm2, x=test$V3, h=nrow(test))
+mape.dlm2<- MAPE(fore.dlm2$forecasts, test$V2)
+#akurasi data training
+GoF(model.dlm2)
+```
+
+Model tersebut merupakan model yang sangat baik dengan nilai MAPE yang kurang dari 10%.
+
+## Model Autoregressive
+
+### Pemodelan
+
+
+```{r}
+model.ardl <- ardlDlm(x = train$V3, y = train$V2, p = 1 , q = 1)
+summary(model.ardl)
+AIC(model.ardl)
+BIC(model.ardl)
+```
+
+Hasil di atas menunjukkan bahwa selain peubah $x_{t-1}$, hasil uji t menunjukkan nilai-p pada peubah $\ge0.05$ Hal ini menunjukkan bahwa peubah $x_{t-1}$ berpengaruh signifikan terhadap $y_t$, sementara $x_t$ dan $y_{t-1}$ berpengaruh signifikan terhadap $y_t$. Model keseluruhannya adalah sebagai berikut:
+
+$$
+\hat{Y}=15.046+0.9946X_t-0.0641X_{t-1}+0,0598Y_{t-1}
+$$
+
+### Peramalan dan Akurasi
+
+```{r}
+fore.ardl <- forecast(model = model.ardl, x=test$V3, h=nrow(test))
+fore.ardl
+```
+
+Data di atas merupakan hasil peramalan untuk 5 periode ke depan menggunakan Model Autoregressive dengan $p=1$ dan $q=1$.
+
+```{r}
+mape.ardl <- MAPE(fore.ardl$forecasts, test$V2)
+mape.ardl
+#akurasi data training
+GoF(model.ardl)
+```
