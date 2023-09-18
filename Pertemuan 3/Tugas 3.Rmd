@@ -35,7 +35,6 @@ data.ts<-ts(data)
 
 ### Pemodelan Koyck
 
-
 ```{r}
 #MODEL KOYCK
 model.koyck <- koyckDlm(x = train$V3, y = train$V2)
@@ -43,7 +42,9 @@ summary(model.koyck)
 AIC(model.koyck)
 BIC(model.koyck)
 ```
+
 ### Peramalan dan Akurasi Koyck
+
 ```{r}
 fore.koyck <- forecast(model = model.koyck, x=test$V3, h=nrow(test))
 fore.koyck
@@ -51,8 +52,10 @@ mape.koyck <- MAPE(fore.koyck$forecasts, test$V2)
 #akurasi data training
 GoF(model.koyck)
 ```
+
 Pemodelan memberikan nilai akurasi yang kurang baik dengan nilai MAPE yang lebih dari 20%.
-## Regression with Distributed Lag
+
+\## Regression with Distributed Lag
 
 ### Pemodelan (Lag=2)
 
@@ -113,7 +116,6 @@ Model tersebut merupakan model yang sangat baik dengan nilai MAPE yang kurang da
 
 ### Pemodelan
 
-
 ```{r}
 model.ardl <- ardlDlm(x = train$V3, y = train$V2, p = 1 , q = 1)
 summary(model.ardl)
@@ -165,7 +167,6 @@ Dari tabel di atas, dapat terlihat bahwa nilai AIC terendah didapat ketika $p=15
 Selanjutnya dapat dilakukan pemodelan dengan nilai $p$ dan $q$ optimum seperti inisialisasi di langkah sebelumnya.
 
 ## Pemodelan DLM & ARDL dengan Library `dynlm`
-
 
 ```{r}
 #sama dengan model dlm q=1
@@ -260,5 +261,4 @@ dev.copy(png, "Perbandingan Setiap Model dengan Data Aktual")
 dev.off()
 ```
 
-Berdasarkan plot tersebut, terlihat bahwa setiap plot cenderung mendekati data aktualnya , sehingga dapat disimpulkan semua model dapat digunakan dengan baik. 
-
+Berdasarkan plot tersebut, terlihat bahwa setiap plot cenderung mendekati data aktualnya , sehingga dapat disimpulkan semua model dapat digunakan dengan baik.
