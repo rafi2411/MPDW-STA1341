@@ -1,0 +1,451 @@
+---
+title: "MPDW simulasi minggu 4"
+author: "Rafi AKbar Wibawa"
+date: "2023-09-21"
+output: html_document
+---
+```{r}
+set.seed(095)
+wn <- rnorm(300)
+ts.plot(wn)
+```
+
+```{r}
+set.seed(095)
+ma <- wn[c(1,2)]
+```
+##Pembangkitan Data MA(2) dengan theta 1 = 0.4 dan theta 2 = 0.6 secara manual
+
+```{r}
+for(i in 3:300){
+   ma[i] <- wn[i] + 0.4 * wn[i - 1] + 0.6 * wn[i - 2]
+}
+ma
+```
+
+##Pembangkitan Data MA(2) dengan theta 1 = 0.4 dan theta 2 = 0.6 secara otomatis
+
+```{r}
+set.seed(095)
+ma1 <- arima.sim(list(order=c(0,0,2), ma = c(0.4,0.6)), n=300)
+ma1
+```
+
+## Karakteristik MA(2)
+
+### Plot Time Series
+
+```{r}
+par(mfrow = c(1,2))
+ts.plot(ma)
+ts.plot(ma1)
+```
+
+Berdasarkan plot time series, terlihat bahwa data MA(1) yang dibangkitkan stasioner dalam rataan
+
+### Plot ACF
+
+```{r}
+par(mfrow = c(1,2))
+acf(ma,lag.max = 20)
+acf(ma1,lag.max = 20)
+```
+
+Berdasarkan plot AFC tersebut, terlihat bahwa plot ACF *cuts off* di lag pertama
+
+### Plot PACF
+
+```{r}
+par(mfrow = c(1,2))
+pacf(ma)
+pacf(ma1)
+```
+
+Berdasarkan plot PACF tersebut, terlihat bahwa plot PACF cenderung *tails off* dan membentuk gelombang sinus
+
+### Plot EACF
+
+```{r}
+library(TSA)
+par(mfrow = c(1,2))
+eacf(ma)
+eacf(ma)
+```
+
+##Plot data lag
+```{r}
+#Yt
+yt_ma <- ma[-1]
+yt_ma
+#Yt-1
+yt_1_ma <- ma[-300]
+yt_1_ma
+```
+
+```{r}
+plot(y=yt_ma,x=yt_1_ma)
+```
+```{r}
+cor(yt_ma,yt_1_ma)
+```
+
+```{r}
+#Yt
+yt_ma2 <- ma[-c(1,2)]
+yt_ma2
+#Yt-2
+yt_2_ma <- ma[-c(299,300)]
+yt_2_ma
+```
+
+```{r}
+plot(y=yt_ma2,x=yt_2_ma)
+```
+```{r}
+cor(yt_ma2,yt_2_ma)
+```
+
+```{r}
+#Yt
+yt_ma3 <- ma[-c(1,2,3)]
+yt_ma3
+#Yt-2
+yt_3_ma <- ma[-c(298,299,300)]
+yt_3_ma
+```
+
+```{r}
+plot(y=yt_ma3,x=yt_3_ma)
+```
+```{r}
+cor(yt_ma3,yt_3_ma)
+```
+##Pembangkitan Data AR(2) dengan phi 1 = 0.5 dan phi 2 = 0.2 secara manual
+```{r}
+set.seed(095)
+n<-length(wn)
+n
+ar <- c(1:n) 
+for (i in 3:n) {ar[i]<-wn[i]+0.5*ar[i-1]+0.2*ar[i-2]}
+ar
+```
+##Pembangkitan Data AR(2) dengan phi 1 = 0.5 dan phi 2 = 0.2 secara arima.sim
+```{r}
+ar1 <- arima.sim(list(order=c(2,0,0), ar=c(0.5,0.2)), n=300)
+ar1
+```
+
+## Karakteristik AR(1)
+
+### Plot Time Series
+
+```{r}
+ts.plot(ar)
+```
+
+Berdasarkan plot time series tersebut terlihat bahwa data cenderung stasioner pada rataan
+
+### Plot ACF
+
+```{r}
+acf(ar)
+```
+
+Berdasarkan plot ACF tersebut terlihat bahwa plot ACF cenderung *tails off* dan cenderung membentuk pola grafik sinus
+
+### Plot PACF
+
+```{r}
+pacf(ar)
+```
+
+Berdasarkan plot PACF tersebut, terlihat bahwa plot PACF *cuts off* pada lag pertama, sejalan dengan teori yang ada
+
+### Plot EACF
+
+```{r}
+TSA::eacf(ar)
+```
+
+### Scatterplot Antar Lag
+
+#### Korelasi antara $Y_t$ dengan $Y_{t-1}$
+
+```{r}
+#Yt
+yt_ar <- ar[-1]
+yt_ar
+#Yt-1
+yt_1_ar <- ar[-300]
+yt_1_ar
+```
+
+```{r}
+plot(y=yt_ar,x=yt_1_ar)
+```
+
+Berdasarkan scatterplot tersebut, terlihat bahwa terdapat hubungan positif antara $Y_t$ dengan $Y_{t-1}$. 
+
+```{r}
+cor(yt_ar,yt_1_ar)
+```
+
+Korelasi antara $Y_t$ dengan $Y_{t-1}$ dari hasil simulasi mendekati perhitungan teoritis yaitu $\rho_1=\phi^1=0.7$
+
+#### Korelasi antara $Y_t$ dengan $Y_{t-2}$
+
+```{r}
+#Yt
+yt_ar2 <- ar[-c(1,2)]
+yt_ar2
+#Yt-2
+yt_2_ar <- ar[-c(299,300)]
+yt_2_ar
+```
+
+```{r}
+plot(y=yt_ar2,x=yt_2_ar)
+```
+
+Berdasarkan scatterplot tersebut, terlihat bahwa terdapat hubungan positif antara $Y_t$ dengan $Y_{t-2}$. 
+
+```{r}
+cor(yt_ar2,yt_2_ar)
+```
+```{r}
+#Yt
+yt_ar3 <- ar[-c(1,2,3)]
+yt_ar3
+#Yt-2
+yt_3_ar <- ar[-c(298,299,300)]
+yt_3_ar
+```
+
+```{r}
+plot(y=yt_ar3,x=yt_3_ar)
+```
+
+Korelasi antara $Y_t$ dengan $Y_{t-2}$ dari hasil simulasi mendekati perhitungan teoritis yaitu $\rho_2=\phi^2=0.49$.
+
+## Fungsi pembangkitan ARMA
+
+Setelah mengetahui cara membangkitkan data berpola AR, MA, dan ARMA sederhana, bagaimana cara melakukan pembangkitan data berpola tersebut yang lebih kompleks? Apakah dapat dibuat suatu fungsi yang fleksibel yang memungkinan pembangkitan dengan berapapun jumlah koefisien?
+
+Pertama, lihat kembali bentuk umum data berpola ARMA.
+
+$$
+y_{t} = c + \sum_{i=1}^p \phi_{i}y_{t-i} + \sum_{j=1}^q e_{t-j}+ e_{t}
+$$
+
+Komponen $c$ dan $e_{t}$ cukup mudah untuk dibuat dan dicari. Bagaimana untuk komponen AR dan MA? Bayangkan ada koefisien dan data sebagai berikut:
+
+$$
+\begin{aligned}
+\begin{bmatrix}
+\phi_1 \  \phi_2 \ \phi_3
+\end{bmatrix}&=
+\begin{bmatrix}
+0.3 \ 0.5 \ 0.2
+\end{bmatrix}
+\\
+\begin{bmatrix}
+y_{t-1} \  y_{t-2} \ y_{t-3}
+\end{bmatrix}&=
+\begin{bmatrix}
+1 \ 2 \ 3
+\end{bmatrix}
+\end{aligned}
+$$
+
+Maka dari itu,
+
+$$
+\begin{aligned}
+\begin{bmatrix}
+\phi_1 \  \phi_2 \ \phi_3
+\end{bmatrix}
+\begin{bmatrix}
+y_{t-1} \\  y_{t-2} \\ y_{t-3}
+\end{bmatrix} &= \phi_1 \ y_{t-1}+\phi_2 \ y_{t-2}+\phi_3 \ y_{t-3}
+\\
+\begin{bmatrix}
+ 0.3 \ 0.5 \ 0.2
+\end{bmatrix}
+\begin{bmatrix}
+1 \\ 2 \\ 3
+\end{bmatrix} & = 0.3 \cdot1+0.5 \cdot 2+0.2 \cdot 3\\
+&=0.3+1+0.6 = 1.9
+\end{aligned}
+$$
+
+Jika koefisien dan *white noise*/nilai deret waktu sebelumnya dapat diekstrak dalam bentuk vektor, dapat dilakukan perkalian matriks untuk mencari nilai bagian AR dan MA:
+
+```{r}
+set.seed(095)
+coefs <- c(0.5, 0.2)
+e <- c(1, 2)
+```
+
+```{r}
+coefs * e
+sum(coefs * e)
+```
+
+Dari prinsip ini, dapat dibuat fungsi umum untuk membangkitkan data ARMA. Input dari fungsi adalah jumlah data yang hendak dibangkitkan, koefisien MA, dan koefisien AR
+##Pembangkitan Data AR(2) dengan phi 1 = 0.5 dan phi 2 = 0.2 secara manual
+```{r}
+arma.sim <- function(n, macoef, arcoef){
+  manum <- length(macoef)
+  arnum <- length(arcoef)
+  stopifnot(manum < n & arnum < n)
+  
+  wn <- rnorm(n, sd = 0.5)
+  init <- max(manum, arnum)
+
+  arma <- wn[1:init]
+  for(i in {init+1}:n){
+   mastart <- i - manum
+   maend <- i-1
+   arstart <- i - arnum
+   arend <- i-1
+   arma[i] <- sum(arcoef * arma[arstart:arend]) + sum(macoef * wn[mastart:maend])  + wn[i]
+   }
+  return(arma)
+}
+```
+
+```{r}
+# beberapa contoh pembangkitan melalui fungsi
+
+ma2 <- arma.sim(300, c(0.4,0.6), 0)
+ar2 <- arma.sim(300, 0, c(0.5, 0.2))
+
+par(mfrow = c(2, 2))
+acf(ma2)
+pacf(ma2)
+acf(ar2)
+pacf(ar2)
+```
+
+```{r}
+#contoh untuk ARMA
+arma22 <- arma.sim(300, c(0.4, 0.6), c(0.5,0.2))
+
+arma22 |> arima(c(2,0,2))
+```
+
+##Pembangkitan Data ARMA(2,2) dengan phi 1 = 0.5, phi 2 = 0.2, theta 1 = 0.4, theta 2 = 0.6 secara manual
+```{r}
+set.seed(095)
+n = length(wn)
+phi1 = 0.4
+phi2 = 0.6
+theta1 = 0.5
+theta2 = 0.2
+
+y.arma=c(1:n)
+for (i in 3:n){y.arma[i] = phi1*y.arma[i-1] + phi2*y.arma[i-2]+theta1*wn[i-1]+theta2*wn[i-2]+wn[i]}
+```
+
+##Pembangkitan Data ARMA(2,2) dengan phi 1 = 0.5, phi 2 = 0.2, theta 1 = 0.4, theta 2 = 0.6 secara arima.sim
+
+```{r}
+arma11 <- arima.sim(list(order=c(2,0,2), ar = c(0.5, 0.2), ma = c(0.4, 0.6)),n=300)
+arma11
+```
+
+## Karakteristik ARMA(2,2)
+
+### Plot Time Series
+
+```{r}
+par(mfrow = c(1, 2))
+ts.plot(y.arma)
+ts.plot(arma11)
+par(mfrow = c(1, 1))
+```
+
+Berdasarkan plot time series tersebut, terlihat bahwa model ARMA(1,1) cenderung stasioner dalam rataan
+
+### Plot ACF
+
+```{r}
+par(mfrow = c(1, 2))
+acf(y.arma)
+acf(arma11)
+par(mfrow = c(1, 1))
+```
+
+Berdasarkan plot ACF tersebut, terlihat bahwa model ARMA(1,1) hasil simulasi memiliki plot ACF yang *tails off*, sesuai dengan teori yang ada
+
+### Plot PACF
+
+```{r}
+par(mfrow = c(1, 2))
+pacf(y.arma)
+pacf(arma11)
+par(mfrow = c(1, 1))
+```
+
+Berdasarkan plot PACF tersebut, terlihat bahwa model ARMA(1,1) hasil simulasi memiliki plot PACF yang *tails off*, sesuai dengan teori
+
+### Plot EACF
+
+```{r}
+TSA::eacf(y.arma)
+TSA::eacf(arma11)
+```
+
+Berdasarkan pola segitiga nol pada plot EACF, terlihat bahwa segitiga nol berada pada ordo AR(2) dan ordo MA(2)
+
+### Scatterplot Antar Lag
+
+#### Korelasi antara $Y_t$ dengan $Y_{t-1}$
+
+```{r}
+#Yt
+yt_arma <- arma11[-1]
+yt_arma
+#Yt-1
+yt_1_arma <- arma11[-300]
+yt_1_arma
+```
+
+```{r}
+plot(y=yt_arma,x=yt_1_arma)
+```
+
+Berdasarkan scatterplot tersebut, terlihat bahwa terdapat hubungan positif antara $Y_t$ dengan $Y_{t-1}$. 
+
+```{r}
+cor(yt_arma,yt_1_arma)
+```
+
+```{r}
+#Yt
+yt_arma <- arma11[c(-1,-2)]
+#Yt-1
+yt_2_arma <- arma11[c(-299,-300)]
+```
+```{r}
+plot(y=yt_arma,x=yt_2_arma)
+```
+Berdasarkan scatterplot tersebut, terlihat bahwa terdapat hubungan positif antara $Y_t$ dengan $Y_{t-2}$. 
+```{r}
+cor(yt_arma,yt_2_arma)
+```
+```{r}
+#Yt
+yt_arma <- arma11[c(-1,-2,-3)]
+yt_arma
+#Yt-1
+yt_3_arma <- arma11[c(-298, -299,-300)]
+yt_3_arma
+```
+```{r}
+plot(y=yt_arma,x=yt_3_arma)
+```
+Berdasarkan scatterplot tersebut, terlihat bahwa terdapat hubungan positif antara $Y_t$ dengan $Y_{t-3}$. 
+```{r}
+cor(yt_arma,yt_3_arma)
+```
