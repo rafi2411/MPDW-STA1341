@@ -350,8 +350,8 @@ for (i in 3:n){y.arma[i] = phi1*y.arma[i-1] + phi2*y.arma[i-2]+theta1*wn[i-1]+th
 ##Pembangkitan Data ARMA(2,2) dengan phi 1 = 0.5, phi 2 = 0.2, theta 1 = 0.4, theta 2 = 0.6 secara arima.sim
 
 ```{r}
-arma11 <- arima.sim(list(order=c(2,0,2), ar = c(0.5, 0.2), ma = c(0.4, 0.6)),n=300)
-arma11
+arma22 <- arima.sim(list(order=c(2,0,2), ar = c(0.5, 0.2), ma = c(0.4, 0.6)),n=300)
+arma22
 ```
 
 ## Karakteristik ARMA(2,2)
@@ -361,7 +361,7 @@ arma11
 ```{r}
 par(mfrow = c(1, 2))
 ts.plot(y.arma)
-ts.plot(arma11)
+ts.plot(arma22)
 par(mfrow = c(1, 1))
 ```
 
@@ -372,7 +372,7 @@ Berdasarkan plot time series tersebut, terlihat bahwa model ARMA(1,1) cenderung 
 ```{r}
 par(mfrow = c(1, 2))
 acf(y.arma)
-acf(arma11)
+acf(arma22)
 par(mfrow = c(1, 1))
 ```
 
@@ -383,7 +383,7 @@ Berdasarkan plot ACF tersebut, terlihat bahwa model ARMA(1,1) hasil simulasi mem
 ```{r}
 par(mfrow = c(1, 2))
 pacf(y.arma)
-pacf(arma11)
+pacf(arma22)
 par(mfrow = c(1, 1))
 ```
 
@@ -393,7 +393,7 @@ Berdasarkan plot PACF tersebut, terlihat bahwa model ARMA(1,1) hasil simulasi me
 
 ```{r}
 TSA::eacf(y.arma)
-TSA::eacf(arma11)
+TSA::eacf(arma22)
 ```
 
 Berdasarkan pola segitiga nol pada plot EACF, terlihat bahwa segitiga nol berada pada ordo AR(2) dan ordo MA(2)
@@ -404,10 +404,10 @@ Berdasarkan pola segitiga nol pada plot EACF, terlihat bahwa segitiga nol berada
 
 ```{r}
 #Yt
-yt_arma <- arma11[-1]
+yt_arma <- arma22[-1]
 yt_arma
 #Yt-1
-yt_1_arma <- arma11[-300]
+yt_1_arma <- arma22[-300]
 yt_1_arma
 ```
 
@@ -423,9 +423,9 @@ cor(yt_arma,yt_1_arma)
 
 ```{r}
 #Yt
-yt_arma <- arma11[c(-1,-2)]
+yt_arma <- arma22[c(-1,-2)]
 #Yt-1
-yt_2_arma <- arma11[c(-299,-300)]
+yt_2_arma <- arma22[c(-299,-300)]
 ```
 ```{r}
 plot(y=yt_arma,x=yt_2_arma)
@@ -436,10 +436,10 @@ cor(yt_arma,yt_2_arma)
 ```
 ```{r}
 #Yt
-yt_arma <- arma11[c(-1,-2,-3)]
+yt_arma <- arma22[c(-1,-2,-3)]
 yt_arma
 #Yt-1
-yt_3_arma <- arma11[c(-298, -299,-300)]
+yt_3_arma <- arma22[c(-298, -299,-300)]
 yt_3_arma
 ```
 ```{r}

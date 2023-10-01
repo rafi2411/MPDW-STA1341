@@ -1,0 +1,174 @@
+---
+title: "Pertemuan 5 MPDW"
+author: "Rafi Akbar Wibawa"
+date: "September 26, 2023"
+output: html_document
+---
+
+```{r}
+library(ggplot2)
+library(tsibble)
+library(tseries)
+library(MASS)
+library(rio)
+```
+
+## Dataioner dalam Rataan dan Ragam
+
+Pada dasarnya, pembangkitan data ARIMA akan menghasilkan data yang Dataioner dalam rataan dan ragam karena akan mengikuti fungsi *default*-nya yang mengikuti pembangkitan bilangan acak normal dengan `mean=0` dan `ragam=1` .
+
+```{r}
+Data1 <- import("https://raw.githubusercontent.com/rafi2411/MPDW-STA1341/main/Pertemuan-1/Raw%20Data.csv")
+Data <- Data1$`NO2 (ug/m3)`
+```
+
+
+### Plot *Time Series*
+
+```{r}
+plot.ts(ts(Data))
+```
+
+Plot deret waktu di atas menunjukkan bahwa data Data stasioner dalam rataan, ditandai dengan data yang menyebar di sekitar nilai tengahnya dan Data tidak stasionerioner dalam ragam, ditandai dengan lebar pita yang cenderung berubah-rubah dengan berpola musiman. 
+
+### Plot ACF
+
+```{r}
+acf(Data)
+```
+
+Berdasarkan plot ACF, terlihat bahwa plot ACF pada data tersebut cenderung *tails off* dan membentuk gelombang sinus. Hal ini menunjukkan bawa data stasioner secara rataan.
+
+### Uji ADF
+
+```{r}
+tseries::adf.test(Data)
+```
+
+$H_0$ : Data tidak Dataioner dalam rataan
+
+$H_1$ : Data Dataioner dalam rataan
+
+Berdasarkan uji ADF tersebut, didapat *p-value* sebesar 0.01 yang lebih kecil dari taraf nyata 5% sehingga tolak $H_0$ dan menandakan bahwa data Dataioner dalam rataan. Hal ini sesuai dengan hasil eksplorasi menggunakan plot time series dan plot ACF.
+
+### Plot Box-Cox
+
+```{r}
+index <- seq(1:length(Data))
+bc = boxcox(Data~index, lambda = seq(-1,0,by=0.05))
+#Nilai Rounded Lambda
+lambda <- bc$x[which.max(bc$y)]
+lambda
+#SK
+bc$x[bc$y > max(bc$y) - 1/2 * qchisq(.95,1)]
+```
+
+Gambar di atas menunjukkan nilai *rounded value* ($\lambda$) optimum sebesar **1,97** dan pada selang kepercayaan 95% nilai memiliki batas bawah **-0,88** dan batas atas **-0.2020**. Selang tersebut tidak memuat nilai satu sehingga dapat dikatakan bahwa data bukan Dataioner dalam ragam.
+
+### Partisi Data
+
+#### Bagian 1
+
+```{r}
+dt_Data1 <- Data[1:79] |> ts()
+mean(dt_Data1)
+var(dt_Data1)
+```
+
+#### Plot Time Series
+
+```{r}
+dt_Data1 |> as_tsibble() |> 
+  ggplot(aes(x = index, y = value)) +
+  geom_line() + theme_bw() +
+  xlab("Obs") + ylab("Nilai")
+```
+
+Plot deret waktu di atas menunjukkan bahwa data Dataioner dalam rataan, ditandai dengan data yang menyebar di sekitar nilai tengahnya dan tetapi tidak Dataioner dalam ragam, ditandai dengan lebar pita yang cenderung berpola musiman.
+
+#### Plot ACF
+
+```{r}
+acf(dt_Data1)
+```
+
+Berdasarkan plot ACF, terlihat bahwa plot ACF pada data tersebut cenderung *tails off* dan membentuk gelombang sinus.
+
+#### Uji ADF
+
+```{r}
+tseries::adf.test(dt_Data1)
+```
+
+$H_0$ : Data tidak Dataioner dalam rataan
+
+$H_1$ : Data Dataioner dalam rataan
+
+Berdasarkan uji ADF tersebut, didapat *p-value* sebesar 0.01 yang lebih kecil dari taraf nyata 5% sehingga tolak $H_0$ dan menandakan bahwa data Dataioner dalam rataan. Hal ini sesuai dengan hasil eksplorasi menggunakan plot time series dan plot ACF.
+
+#### Plot Boxcox
+
+```{r}
+index <- seq(1:79)
+bc = boxcox(dt_Data1~index, lambda = seq(-1.5,0,by=0.5))
+#Nilai Rounded Lambda
+lambda <- bc$x[which.max(bc$y)]
+lambda
+#SK
+bc$x[bc$y > max(bc$y) - 1/2 * qchisq(.95,1)]
+```
+
+Gambar di atas menunjukkan nilai *rounded value* ($\lambda$) optimum sebesar **-0.7272** dan pada selang kepercayaan 95% nilai memiliki batas bawah **-1,1667** dan batas atas **-0.3030**. Selang tersebut tidak memuat nilai satu sehingga dapat dikatakan bahwa data tidak  Dataioner dalam ragam.
+
+#### Bagian 2
+
+```{r}
+dt_Data2 <- Data[1:148] |> ts()
+mean(dt_Data2)
+var(dt_Data2)
+```
+
+#### Plot Time Series
+
+```{r}
+dt_Data2 |> as_tsibble() |> 
+  ggplot(aes(x = index, y = value)) +
+  geom_line() + theme_bw() +
+  xlab("Obs") + ylab("Nilai")
+```
+
+Plot deret waktu di atas menunjukkan bahwa data Dataioner dalam rataan, ditandai dengan data yang menyebar di sekitar nilai tengahnya tetapi tidak Dataioner dalam ragam, ditandai dengan lebar pita yang cenderung sama.
+
+#### Plot ACF
+
+```{r}
+acf(dt_Data2)
+```
+
+Berdasarkan plot ACF, terlihat bahwa plot ACF pada data tersebut cenderung *tails off* dan membentuk gelombang sinus.
+
+#### Uji ADF
+
+```{r}
+adf.test(dt_Data2)
+```
+
+$H_0$ : Data tidak Dataioner dalam rataan
+
+$H_1$ : Data Dataioner dalam rataan
+
+Berdasarkan uji ADF tersebut, didapat *p-value* sebesar 0.01 yang lebih kecil dari taraf nyata 5% sehingga tolak $H_0$ dan menandakan bahwa data Dataioner dalam rataan. Hal ini sesuai dengan hasil eksplorasi menggunakan plot time series dan plot ACF.
+
+#### Plot Boxcox
+
+```{r}
+index <- seq(1:148)
+bc = boxcox(dt_Data2~index, lambda = seq(-1,0,by=0.5))
+#Nilai Rounded Lambda
+lambda <- bc$x[which.max(bc$y)]
+lambda
+#SK
+bc$x[bc$y > max(bc$y) - 1/2 * qchisq(.95,1)]
+```
+
+Gambar di atas menunjukkan nilai *rounded value* ($\lambda$) optimum sebesar **-0.474** dan pada selang kepercayaan 95% nilai memiliki batas bawah **-0.797** dan batas atas **-0.1616**. Selang tersebut tidak memuat nilai satu sehingga dapat dikatakan bahwa data tidak Dataioner dalam ragam.
