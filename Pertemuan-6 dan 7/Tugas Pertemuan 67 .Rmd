@@ -15,7 +15,7 @@ library("rio")
 ## Impor Data
 
 ```{r}
-data <- import("https://raw.githubusercontent.com/rafi2411/MPDW-STA1341/main/Pertemuan-1/Data/Raw%20Data.csv")
+data <- import("https://raw.githubusercontent.com/rafi2411/MPDW-STA1341/main/Pertemuan-6%20dan%207/Data/Raw%20Data.csv")
 colnames(data) <- c("Waktu", "NO2")
 data$Waktu<- ts(data$Waktu,frequency = 24)
 Data<- data$NO2
