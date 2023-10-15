@@ -101,15 +101,15 @@ Dijumlah dari pengamtan eksploratif didapat 5 model
 
 ```{r}
 model1.da=Arima(Train.diff, order=c(0,1,0),method="ML")
-summary(model1.da) #AIC=4753.18
-lmtest::coeftest(model1.da) #seluruh parameter signifikan
+summary(model1.da) #AIC=672.81
+lmtest::coeftest(model1.da) 
 ```
 
 #### ARIMA(1,1,0)
 
 ```{r}
 model2.da=Arima(Train.diff, order=c(1,1,0),method="ML")
-summary(model2.da) #AIC=4917.41
+summary(model2.da) #AIC=665.5
 lmtest::coeftest(model2.da) #seluruh parameter signifikan
 ```
 
@@ -117,24 +117,24 @@ lmtest::coeftest(model2.da) #seluruh parameter signifikan
 
 ```{r}
 model3.da=Arima(Train.diff, order=c(1,1,1),method="ML")
-summary(model3.da) #AIC=4761.39
-lmtest::coeftest(model3.da) #seluruh parameter signifikan
+summary(model3.da) #AIC=629.66
+lmtest::coeftest(model3.da) #parameter ar1 tidak signifikan
 ```
 
 #### ARIMA(0,1,2)
 
 ```{r}
 model4.da=Arima(Train.diff, order=c(0,1,2),method="ML")
-summary(model4.da) #AIC=4748.3
-lmtest::coeftest(model4.da) #seluruh parameter signifikan
+summary(model4.da) #AIC=629.66
+lmtest::coeftest(model4.da) # parameter MA2 signifikan
 ```
 
 #### ARIMA(1,1,2)
 
 ```{r}
 model5.da=Arima(Train.diff, order=c(2,1,0),method="ML")
-summary(model5.da) #AIC=4749.85 
-lmtest::coeftest(model5.da) #terdapat parameter tidak signifikan
+summary(model5.da) #AIC=657.67 
+lmtest::coeftest(model5.da) #semua parameter signifikan
 ```
 Model terbaik ARIMA(1,1,2)
 
@@ -178,7 +178,7 @@ $H_0$ : Sisaan saling bebas
 
 $H_1$ : Sisaan tidak tidak saling bebas
 
-Berdasarkan uji Ljung-Box tersebut, didapat *p-value* sebesar 0.8471 yang lebih besar dari taraf nyata 5% sehingga tak tolak $H_0$ dan menandakan bahwa sisaan saling bebas. Hal ini berbeda dengan eksplorasi.
+Berdasarkan uji Ljung-Box tersebut, didapat *p-value* sebesar 0.4676 yang lebih besar dari taraf nyata 5% sehingga tak tolak $H_0$ dan menandakan bahwa sisaan saling bebas. Hal ini berbeda dengan eksplorasi.
 
 ```{r}
 #3) Sisaan homogen 
@@ -191,7 +191,7 @@ $H_0$ : Ragam sisaan homogen
 
 $H_1$ : Ragam sisaan tidak homogen
 
-Berdasarkan uji Ljung-Box terhadap sisaan kuadrat tersebut, didapat *p-value* sebesar 0.000 yang kurang dari taraf nyata 5% sehingga tak tolak $H_0$ dan menandakan bahwa ragam sisaan tidak homogen.
+Berdasarkan uji Ljung-Box terhadap sisaan kuadrat tersebut, didapat *p-value* sebesar 0.01367 yang kurang dari taraf nyata 5% sehingga tolak $H_0$ dan menandakan bahwa ragam sisaan tidak homogen.
 
 ```{r}
 #4) Nilai tengah sisaan sama dengan nol 
@@ -204,7 +204,7 @@ $H_0$ : nilai tengah sisaan sama dengan 0
 
 $H_1$ : nilai tengah sisaan tidak sama dengan 0
 
-Berdasarkan uji-ttersebut, didapat *p-value* sebesar 0.4866 yang lebih besar dari taraf nyata 5% sehingga tak tolak $H_0$ dan menandakan bahwa nilai tengah sisaan sama dengan nol. Hal ini berbeda dengan eksplorasi.
+Berdasarkan uji-ttersebut, didapat *p-value* sebesar 0.7471 yang lebih besar dari taraf nyata 5% sehingga tak tolak $H_0$ dan menandakan bahwa nilai tengah sisaan sama dengan nol. Hal ini berbeda dengan eksplorasi.
 
 #overfitting
 
@@ -240,6 +240,7 @@ Berdasarkan hasil plot ramalan di atas, dapat dilihat bahwa ramalan ARIMA(2,1,2)
 pt_1 <- Train[length(Train)] #nilai akhir data latih
 hasil.forc.Diff <- data.ramalan.da
 hasil <- diffinv(hasil.forc.Diff, differences = 1) + pt_1
+ts.plot(ts(Train),hasil)
 #has.1 sama hasilnta dengan: cumsum(c(pt_1,hasil.forc.Diff))
 ```
 
@@ -251,4 +252,4 @@ perbandingan.da
 accuracy(ts(hasil[-1]), head(Test, n=length(Test)))
 ```
 
-ts.plot(train.ts,hasil)
+Didapat nilai MAPE yang cukup besar yakni 79.83728%
