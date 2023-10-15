@@ -251,3 +251,4 @@ perbandingan.da
 accuracy(ts(hasil[-1]), head(Test, n=length(Test)))
 ```
 
+ts.plot(train.ts,hasil)
