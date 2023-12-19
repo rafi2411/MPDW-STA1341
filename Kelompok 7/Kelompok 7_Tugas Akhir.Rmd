@@ -1,0 +1,832 @@
+---
+title: "PERBANDINGAN ARIMAX DAN ARDL PADA DATA IHSG PERIODE APRIL 2020-NOVEMBER 2023 MENGGUNAKAN PEUBAH EKSOGEN KURS DOLAR"
+author: "DIVA NISFU MUSTIKA"
+date: "2023-12-02"
+output: rmdformats::downcute
+---
+
+# 1. Packages dan Data
+
+```{r}
+knitr::opts_chunk$set(dev = "png",
+                      dpi = 300,
+                      echo = TRUE,
+                      cache = TRUE)
+library(readxl)
+library(TTR)
+library(forecast)
+library(tseries)
+library(TSA)
+library(dynlm)
+library(lmtest)
+library(imputeTS)
+library(stats)
+library(MASS)
+library(padr)
+library(astsa)
+library(tfarima)
+library(FinTS)
+library(rio)
+library(ggplot2)
+library(tsibble)
+library(tseries)
+library(MASS)
+library(dplyr)
+library(TTR)
+library(forecast)
+library(lmtest)
+library(orcutt)
+library(HoRM)
+library(dLagM)
+library(dynlm)
+library(MLmetrics)
+library(car)
+library(TSA)
+library(aTSA)
+library(urca)
+library(rugarch)
+```
+
+## 1.1 Data Indeks Harga Saham Gabungan
+```{r}
+data <- import("https://raw.githubusercontent.com/divanm/mpdw/main/Data/data%20fix.csv")
+data
+```
+#### 1.1.1 Mengambil data close
+
+```{r}
+data_close <- as.numeric(data$Close)
+data_close <- as.data.frame(data_close)
+```
+
+### 1.1.2 Mengubah data menjadi data time series
+
+```{r}
+data.ts <- ts(data_close)
+```
+
+### 1.1.3 Eksplorasi Data
+
+#### 1.1.3.1 Plot Data Penuh
+
+```{r}
+datadate <- data$Date
+dataplot1 <- cbind(datadate,data_close)
+ggplot(dataplot1, aes(x = datadate, y = data_close)) +
+  geom_line(color = "black", linetype = "solid", size = 1) +
+  geom_point(color = "blue", size = 1) +
+  labs(title = "Plot Time Series Harga Penutupan IHSG", x = "Tahun", y = "Harga Penutupan IHSG") +
+  theme_minimal()+
+  theme(plot.title = element_text(size = 20, face = "bold", hjust =0.5))
+```
+Berdasarkan plot data deret waktu terlihat garis yang putus sehingga diduga terdapat missing value. Oleh karena itu, akan dilakukan pengecekan missing value.
+
+#### 1.1.3.2 Mengecek keberadaan missing value
+
+```{r}
+data_close[which(is.na(data_close$data)),]
+```
+
+#### 1.1.3.3 Menduga missing value
+
+```{r}
+data_close <- na_interpolation(data_close, option = "spline")
+data_close[109,]
+```
+#### 1.1.3.4 Plot Data Penuh Setelah Interpolasi
+
+```{r}
+datadate <- data$Date
+dataplot <- cbind(datadate,data_close)
+ggplot(dataplot, aes(x = datadate, y = data_close)) +
+  geom_line(color = "black", linetype = "solid", size = 1) +
+  geom_point(color = "blue", size = 1) +
+  labs(title = "Plot Time Series Harga Penutupan IHSG", x = "Tahun", y = "Harga Penutupan IHSG") +
+  theme_minimal()+
+  theme(plot.title = element_text(size = 20, face = "bold", hjust =0.5))
+```
+
+Berdasarkan plot data deret waktu, terlihat missing value sudah tertangani. Pola data cenderung memiliki trend yang naik. Berdasarkan pola data, pembagian data latih dan data uji ditetapkan dengan proporsi 90%:10%.
+
+### 1.1.4 Pembagian Data
+
+Data kemudian dibagi menjadi data latih dan data uji. Pembagian kali ini
+dilakukan dengan proporsi / perbandingan, yaitu 90:10.
+
+```{r}
+data.train <- data_close$data_close[1:171]
+train.ts <- ts(data.train)
+data.test <- data_close$data_close[172:189]
+test.ts <- ts(data.test)
+traindif<- diff(data.train, difference =1)
+```
+
+#### 1.1.4.1 Plot Data Latih
+
+```{r}
+train.ts<-ts(data.train)
+plot.ts(train.ts, lty=1, xlab="waktu", ylab="IHSG", main="Plot IHSG Train")
+```
+
+Berdasarkan plot data deret waktu pada data latih, terlihat bahwa data
+cenderung memiliki trend yang naik dan cenderung tidak bergerak pada
+nilai tengah tertentu. Hal ini mengindikasikan bahwa data tidak
+stasioner dalam rataan.
+
+#### 1.1.4.2 Plot Data Uji
+
+```{r}
+test.ts<-ts(data.test, start = 172)
+plot.ts(test.ts, lty=1, xlab="waktu", ylab="IHSG", main="Plot IHSG")
+```
+
+## 1.2 Data Kurs Dolar
+
+```{r}
+data_kurs <- import("https://raw.githubusercontent.com/divanm/mpdw/main/Data/data%20kuts%20dolar%20fix.csv")
+```
+
+### 1.2.1 Ambil kolom penutupan kurs dolar
+```{r}
+kurs1<- data_kurs$Terakhir*1000
+kurs <- kurs1^4
+kurs<-kurs[1:189]
+```
+
+#### 1.2.1.1 Ubah data time series
+```{r}
+kurs.ts <- ts(kurs)
+```
+
+### 1.2.2 Eksplorasi Data
+#### 1.2.2.1 Plot time series
+```{r}
+kurs1.ts <- as.data.frame(ts(kurs1))
+dataplot2 <- cbind(datadate,kurs1.ts)
+ggplot(dataplot2, aes(x = datadate, y = x)) +
+  geom_line(color = "black", linetype = "solid", size = 1) +
+  geom_point(color = "blue", size = 1) +
+  labs(title = "Plot Time Series Kurs Dolar", x = "Tahun", y = "Kurs Dolar") +
+  theme_minimal()+
+  theme(plot.title = element_text(size = 20, face = "bold", hjust =0.5))
+```
+
+#### 1.2.2.2 Split Data
+```{r}
+kurs.train <- kurs[1:171]
+traink.ts <- ts(kurs.train)
+kurs.test <- kurs[172:189]
+testk.ts <- ts(kurs.test)
+```
+
+#### 1.2.2.3 Plot time series variabel eksogen
+```{r}
+plot(traink.ts,xlab = "Periode", ylab = "Data Kurs Dollar", col="black", main = "Data Training Histori Kurs Dollar")
+points(traink.ts)
+```
+
+# 2. Analisis Data 
+## 2.1 Uji Stasioneritas Data Penutupan IHSG
+### 2.1.1 Plot ACF
+```{r}
+acf(train.ts)
+```
+
+Berdasarkan plot ACF, terlihat bahwa plot ACF data menurun secara
+perlahan (*tails of slowly*). Hal ini juga menjadi indikasi bahwa data
+tidak stasioner dalam rataan
+
+### 2.1.2 Uji ADF
+
+```{r}
+tseries::adf.test(train.ts)
+```
+
+$H_0$ : Data tidak stasioner dalam rataan
+
+$H_1$ : Data stasioner dalam rataan
+
+Berdasarkan uji ADF tersebut, didapat *p-value* sebesar 0.4943 yang
+lebih besar dari taraf nyata 5% sehingga tak tolak $H_0$ dan menandakan
+bahwa data tidak stasioner dalam rataan. Hal ini sesuai dengan hasil
+eksplorasi menggunakan plot time series dan plot ACF, sehingga
+ketidakstasioneran model kedepannya harus ditangani
+
+### 2.1.3 Plot Box-Cox
+
+```{r}
+index <- seq(1:171)
+bc = boxcox(train.ts~index, lambda = seq(-5,10,by=1))
+#Nilai Rounded Lambda
+lambda <- bc$x[which.max(bc$y)]
+lambda
+#SK
+bc$x[bc$y > max(bc$y) - 1/2 * qchisq(.95,1)]
+```
+
+Plot Boxcox menunjukkan nilai *rounded value* ($\lambda$) optimum
+sebesar **3.787879** dan pada selang kepercayaan 95% nilai memiliki
+batas bawah **2.878788** dan batas atas **4.696970**. Selang tersebut
+tidak memuat nilai satu sehingga dapat dikatakan bahwa data tidak
+stasioner dalam ragam.
+
+## 2.2 Penanganan Ketidakstasioneran Data
+
+### 2.2.1 Ketidakstasioner dalam Ragam
+
+Berdasarkan nilai lmbda yang didapat akan digunakan transformasi lambda 3
+```{r}
+data.trans <- data_close^4
+train.trans <- (data.train)^4
+test.trans <- (data.test)^4
+train.trans.ts <- ts(train.trans, frequency = 1)
+```
+Kemudian dilakukan pengecekan kembali kestasioneran dalam ragam
+
+```{r}
+index <- seq(1:171)
+bc = boxcox(train.trans.ts~index, lambda = seq(-5,10,by=1))
+#Nilai Rounded Lambda
+lambda <- bc$x[which.max(bc$y)]
+lambda
+#SK
+bc$x[bc$y > max(bc$y) - 1/2 * qchisq(.95,1)]
+```
+Plot Boxcox menunjukkan nilai *rounded value* ($\lambda$) optimum sebesar **0.9090909** dan pada selang kepercayaan 95% nilai memiliki batas bawah **0.7575758** dan batas atas **1.2121212**. Selang tersebut
+memuat nilai satu sehingga dapat dikatakan bahwa data stasioner dalam ragam.
+
+### 2.2.2 Ketidakstasioneran dalam Rataan
+
+```{r}
+train.diff<-diff(train.trans.ts,differences = 1) 
+plot.ts(train.diff, lty=1, xlab="waktu", ylab="Data Difference 1 IHSG", main="Plot Difference IHSG")
+```
+
+Berdasarkan plot data deret waktu, terlihat bahwa data sudah stasioner dalam rataan ditandai dengan data bergerak pada nilai tengah tertentu (tidak terdapat trend ataupun musiman pada data). Namun, agar lebih meyakinkan akan dilihat dari plot ACF serta uji ADF juga.
+
+
+```{r}
+acf(train.diff)
+```
+
+Berdasarkan plot tersebut, terlihat bahwa plot ACF cuts off pada lag 3. Oleh karena itu, sudah stasioner dalam rataan.
+
+
+```{r}
+tseries::adf.test(train.diff)
+```
+
+$H_0$ : Data tidak stasioner dalam rataan
+
+$H_1$ : Data stasioner dalam rataan
+
+Berdasarkan uji ADF tersebut, didapat *p-value* sebesar 0.01 yang lebih kecil dari taraf nyata 5% sehingga tolak $H_0$ atau data stasioner dalam rataan. Hal ini sesuai dengan hasil eksplorasi menggunakan plot time series dan plot ACF, sehingga dalam hal ini ketidakstasioneran data sudah berhasil ditangani dan dapat dilanjutkan ke pemodelan. 
+
+### 2.3 Uji Stasioneritas data Kurs Dolar
+### 2.3.1 Plot ACF
+
+```{r}
+acf(kurs.train, lag.max = 24, main = "Plot ACF Train Kurs Dolar")
+```
+
+Berdasarkan Plot ACF Sisaan, nilai korelasi antar lag terlihat pada plot di atas menurun secara perlahan (tails off slowly). Hal tersebut
+mengindikasikan bahwa sisaan tidak stasioner. Perlu dilakukan uji formal untuk mengambil kesimpulan kestasioneran data 
+
+### 2.3.2 Uji Formal ADF
+Secara formal, metode Augmented Dickey-Fuller (ADF) dapat memberikan
+hasil uji secara akurat untuk menentukan apakah sebuah data stasioner
+atau tidak. Namun, Uji ADF ini hanya mengukur tingkat stasioneritas
+berdasarkan nilai tengah saja. Dengan hipotesis yang diuji sebagai
+berikut : 
+H0 : Nilai tengah sisaan tidak stasioner 
+H1 : Nilai tengah
+sisaan stasioner α = 5% = 0.05
+
+```{r}
+tseries::adf.test(kurs.train)
+```
+
+Berdasarkan hasil Augmented Dickey-Fuller Test (ADF Test) didapatkan
+p-value = 0.085 \> α, maka tak tolak H0. Artinya, tidak cukup bukti
+untuk mengatakan bahwa sisaan stasioner pada taraf nyata 5%. Sehingga,
+perlu dilakukan differencing sebelum melakukan penentuan model tentatif
+
+### 2.3.3 Penanganan Ketidakstasioneran Data
+Akan dilakukan Differencing 1  kali
+```{r}
+kurstraindif <- diff(kurs1[1:171], difference=1)
+kurstestdif <- diff(kurs1[172:189], difference=1)
+kursdif <- diff(kurs1, difference=1)
+kursdiff <- diff(kurs1, difference =1 )
+kurs.diff<- diff(kurs.train, difference = 1)
+```
+
+#### 2.3.3.1 Cek kestasioneran data kembali
+Pengujian menggunakan Augmented Dickey-Fuller Test 
+H0: Nilai tengah sisaan tidak stasioner 
+H1: Nilai tengah sisaan stasioner α= 5% = 0.05
+
+```{r}
+tseries::adf.test(kurs.diff)
+```
+
+Berdasarkan hasil Augmented Dickey-Fuller Test (ADF Test) didapatkan
+p-value = 0.01 \< α, maka tolak H_0. Artinya, cukup bukti untuk
+mengatakan bahwa sisaan stasioner pada taraf nyata 5% setelah dilakukan
+differencing sebanyak 1 kali.
+
+```{r}
+acf(kurs.diff)
+```
+Berdasarkan plot tersebut, terlihat bahwa plot ACF cenderung *cuts off* pada lag ke 2, sehingga sudah stasioner  dalam rataan
+
+# 3. ARIMAX 
+## 3.1 Identifikasi Model
+### 3.1.1 Plot ACF
+
+```{r}
+acf(train.diff)
+```
+
+Berdasarkan plot tersebut, terlihat bahwa plot ACF cenderung *cuts off*
+pada lag ke 3, sehingga jika plot PACF dianggap *tails of*, maka model
+tentatifnya adalah ARIMA(0,1,3).
+
+### 3.1.2 Plot PACF
+
+```{r}
+pacf(train.diff)
+```
+
+Berdasarkan plot tersebut, terlihat bahwa plot PACF cenderung *cuts off*
+pada lag ke 3, sehingga jika plot ACF dianggap *tails of*, maka model
+tentatifnya adalah ARIMA(3,1,0).
+
+Jika baik plot ACF maupun plot PACF keduanya dianggap tails of, maka
+model yang terbentuk adalah ARIMA(3,1,3)
+
+### 3.1.3 Plot EACF
+
+```{r}
+eacf(train.diff)
+```
+
+Identifikasi model menggunakan plot EACF dilakukan dengan melihat ujung
+segitiga pada pola segitiga nol. Dalam hal ini model tentatif yang
+terbentuk adalah  ARIMA(1,1,1), ARIMA(0,1,1), ARIMA(0,1,3), ARIMA(1,1,2), ARIMA(2,1,2), ARIMA(3,1,1), ARIMA(3,1,0) dan ARIMA(3,1,3).
+
+## 3.2 Pendugaan Parameter Model Tentatif
+
+### 3.2.1 ARIMA(0,1,1)
+
+```{r}
+model1.da=Arima(train.trans.ts, order=c(0,1,1),method="ML")
+summary(model1.da) 
+lmtest::coeftest(model1.da) 
+```
+
+### 3.2.2 ARIMA(1,1,2)
+
+```{r}
+model2.da=Arima(train.trans.ts, order=c(1,1,2),method="ML")
+summary(model2.da) 
+lmtest::coeftest(model2.da) 
+```
+
+### 3.2.3 ARIMA(2,1,2)
+
+```{r}
+model3.da=Arima(train.trans.ts, order=c(2,1,2),method="ML")
+summary(model3.da)
+lmtest::coeftest(model3.da) 
+```
+
+### 3.2.4 ARIMA(1,1,1)
+
+```{r}
+model4.da=Arima(train.trans.ts, order=c(1,1,1),method="ML")
+summary(model4.da) 
+lmtest::coeftest(model4.da) 
+```
+
+### 3.2.5 ARIMA(3,1,0)
+
+```{r}
+model5.da=Arima(train.trans.ts, order=c(3,1,0),method="ML")
+summary(model5.da)
+lmtest::coeftest(model5.da)
+```
+
+### 3.2.6 ARIMA(3,1,1)
+
+```{r}
+model6.da=Arima(train.trans.ts, order=c(3,1,1),method="ML")
+summary(model6.da)
+lmtest::coeftest(model6.da)
+```
+### 3.2.7 ARIMA(3,1,3)
+
+```{r}
+model7.da=Arima(train.trans.ts, order=c(3,1,3),method="ML")
+summary(model7.da)
+lmtest::coeftest(model7.da)
+```
+### 3.2.7 ARIMA(3,1,0)
+
+```{r}
+model8.da=Arima(train.trans.ts, order=c(0,1,3),method="ML")
+summary(model8.da)
+lmtest::coeftest(model8.da)
+```
+
+Berdasarkan pendugaan parameter di atas, nilai AIC terkecil dan juga
+seluruhnya signifikan sehingga model yang dipilih adalah model
+ARIMA(1,1,2).
+
+## 3.3 Pembentukan Model ARIMAX
+
+Berdasarkan identifikasi dan diagnostik model, didapatkan model ARIMA terbaik yaitu ARIMA(2,1,2) sehingga model ini akan digunakan dalam pembuatan model ARIMAX(2,1,2).
+
+```{r}
+model.arimax <- Arima(train.trans, order = c(1,1,2), xreg = kurs.train, method = "ML")
+coeftest(model.arimax)
+round(model.arimax$aic, 3)
+```
+
+
+Hasil uji signifikansi ARIMAX (1,1,2) karena semua parameternya lebih kecil dari taraf nyata 10%. Selanjutnya model ARIMAX (1,1,2) akan diuji diagnostik model.
+
+### 3.3.1 Uji Signifikansi Parameter
+#### 3.3.1.1 Uji Signifikansi Parameter
+### 3.3.2 Diagnostik Model ARIMAX(2,1,2)
+#### 3.3.2.1 Eksplorasi Sisaan
+
+```{r}
+sisaan.max <- model.arimax$residuals 
+par(mfrow=c(1,1)) 
+qqnorm(sisaan.max) 
+qqline(sisaan.max, col = "blue", lwd = 2) 
+plot(c(1:length(sisaan.max)),sisaan.max) 
+acf(sisaan.max) 
+pacf(sisaan.max) 
+par(mfrow = c(1,1))
+```
+
+Berdasarkan plot kuantil-kuantil normal, secara eksplorasi ditunjukkan sisaan tidak menyebar normal ditandai dengan titik titik yang cenderung tidak mengikuti garis $45^{\circ}$. Kemudian dapat dilihat juga lebar pita sisaan yang cenderung tidak sama menandakan bahwa sisaan memiliki ragam yang tidak homogen. Plot ACF dan PACF sisaan ARIMAX(1,1,2) juga tidak signifikan pada 20 lag awal yang menandakan sisaan saling bebas. Kondisi ini akan diuji lebih lanjut dengan uji formal.
+
+#### 3.3.1.2 Uji Formal
+##### 3.3.1.2.1 Sisaan Menyebar Normal 
+```{r}
+ks.test(sisaan.max,"pnorm")  #tak tolak H0 > sisaan menyebar normal
+```
+
+Selain dengan eksplorasi, asumsi tersebut dapat diuji menggunakan uji
+formal. Pada tahapan ini uji formal yang digunakan untuk normalitas
+adalah uji Kolmogorov-Smirnov (KS). Hipotesis pada uji KS adalah sebagai
+berikut.
+
+$H_0$ : Sisaan menyebar normal
+
+$H_1$ : Sisaan tidak menyebar normal
+
+Berdasarkan uji KS tersebut, didapat *p-value* sebesar 2.2e-16 yang
+kurang dari taraf nyata 5% sehingga tolak $H_0$ dan menandakan bahwa
+sisaan tidak menyebar normal. Hal ini sesuai dengan hasil
+eksplorasi menggunakan plot kuantil-kuantil normal.
+
+##### 3.3.1.2.2 Sisaan saling bebas/tidak ada autokorelasi 
+```{r}
+Box.test(sisaan.max, type = "Ljung")  #tak tolak H0 > sisaan saling bebas
+```
+
+Selanjutnya akan dilakukan uji formal untuk kebebasan sisaan menggunakan
+uji Ljung-Box. Hipotesis yang digunakan adalah sebagai berikut.
+
+$H_0$ : Sisaan saling bebas
+
+$H_1$ : Sisaan tidak tidak saling bebas
+
+Berdasarkan uji Ljung-Box tersebut, didapat *p-value* sebesar 0.962
+yang lebih besar dari taraf nyata 5% sehingga tak tolak $H_0$ dan
+menandakan bahwa sisaan saling bebas.
+
+##### 3.3.1.2.3 Sisaan homogen 
+```{r}
+Box.test((sisaan.max)^2, type = "Ljung")  #tak tolak H0 > sisaan homogen
+```
+
+Hipotesis yang digunakan untuk uji kehomogenan ragam adalah sebagai
+berikut.
+
+$H_0$ : Ragam sisaan homogen
+
+$H_1$ : Ragam sisaan tidak homogen
+
+Berdasarkan uji Ljung-Box terhadap sisaan kuadrat tersebut, didapat
+*p-value* sebesar 0.01805 yang lebih kecil dari taraf nyata 5% sehingga tolak $H_0$ dan menandakan bahwa ragam sisaan tidak homogen.
+
+#### 3.3.1.3 Pengecekan Overfitting
+##### 3.3.1.3.1 ARIMAX(2,1,2)
+```{r}
+model1x.over <- Arima(train.trans, order = c(2,1,2), xreg = kurs.train, method = "ML")
+coeftest(model1x.over)
+round(model1x.over$aic, 3)
+```
+
+##### 3.3.1.3.2 ARIMAX(1,1,3)
+```{r}
+model2x.over <- Arima(train.trans, order = c(1,1,3), xreg = kurs.train, method = "ML")
+coeftest(model2x.over)
+round(model2x.over$aic, 3)
+```
+
+Karena parameter ar1 dan ar2 pada model ARIMAX(3,1,2) tidak berubah secara signifikan dari parameter ar1 dan parameter ar2 pada model
+ARIMAX(2,1,2), Pada parameter ma1 dan ma2 pada model ARIMAX(3,1,2) tidak berubah secara signifikan dari parameter ma1 dan parameter ma2 pada
+model ARIMAX(2,1,2). Selain itu diperoleh bahwa model ARIMAX(2,1,3) dan ARIMAX(3,1,2) tidak signifikan pada beberapa parameter dan nilai AIC lebih besar daripada ARIMAX(2,1,2).
+
+Maka model ARIMAX(1,1,2) tidak terjadi overfitting atau merupakan model yang baik untuk digunakan. (Cryer dan Chan. 2008)
+
+
+# 4. Pemeriksaan efek ARCH
+## 4.1 Uji ARCH-Lagrange Multiplier (ARCH-LM)
+```{r}
+for (i in 1:20) {
+  ArchTest <- ArchTest(sisaan.max, lags=i, demean=TRUE)
+  cat("P Value LM Test lag ke", i,"adalah" , ArchTest$p.value, "\n") }
+```
+Diperoleh signifikan sampai lag ke4 sehingga terdapat efek heteroskedastisitas
+
+### 4.3 Pembentukan Model ARIMAX(3,1,3)-ARCH(1)
+Berdasarkan trial n error didapat nilai AIC terkecil dan semua parameter signifikan pada ARIMAX(1,1,2)-ARCH(1)
+```{r}
+library(rugarch)
+model.arch1<-ugarchspec(variance.model = list(model = "sGARCH", garchOrder = c(1,0)),  mean.model = list(armaOrder = c(1, 2),external.regressors = as.matrix(kurstraindif)))
+
+m.11<-ugarchfit(spec=model.arch1,data=traindif, out.sample = 40)
+m.11
+matrix_kurs_test_diff <- as.matrix(kurstestdif)
+```
+## 4.4 Uji Diagnostik Model ARIMAX(1,1,2)-ARCH(1)
+### 4.4.1 Sisaan Menyebar Normal 
+```{r}
+sisaan.arch <- residuals(m.11)
+ks.test(sisaan.arch,"pnorm")  #tak tolak H0 > sisaan menyebar normal
+```
+
+Selain dengan eksplorasi, asumsi tersebut dapat diuji menggunakan uji
+formal. Pada tahapan ini uji formal yang digunakan untuk normalitas
+adalah uji Kolmogorov-Smirnov (KS). Hipotesis pada uji KS adalah sebagai
+berikut.
+
+$H_0$ : Sisaan menyebar normal
+
+$H_1$ : Sisaan tidak menyebar normal
+
+Berdasarkan uji KS tersebut, didapat *p-value* sebesar 2.2e-16 yang
+kurang dari taraf nyata 5% sehingga tolak $H_0$ dan menandakan bahwa
+sisaan tidak menyebar normal. Hal ini sesuai dengan hasil
+eksplorasi menggunakan plot kuantil-kuantil normal.
+
+### 4.4.2 Sisaan saling bebas/tidak ada autokorelasi 
+Selanjutnya akan dilakukan uji formal untuk kebebasan sisaan menggunakan
+Weighted Ljung-Box Test on Standardized Residuals dari hasil m.11. 
+Hipotesis yang digunakan adalah sebagai berikut.
+
+$H_0$ : Sisaan saling bebas
+
+$H_1$ : Sisaan tidak tidak saling bebas
+
+Berdasarkan uji Ljung-Box tersebut, didapat semua *p-value* 
+yang lebih besar dari taraf nyata 5% sehingga tak tolak $H_0$ dan
+menandakan bahwa sisaan saling bebas.
+
+### 4.4.3 Ragam sisaan homogen
+Selanjutnya akan dilakukan uji formal untuk kebebasan sisaan menggunakan
+Weighted Ljung-Box Test on Standardized Squared Residuals dari hasil m.11. 
+Hipotesis yang digunakan adalah sebagai berikut.
+
+$H_0$ : Ragam sisaan homogen
+
+$H_1$ : Ragam sisaan heterogen
+
+Berdasarkan uji Ljung-Box tersebut, didapat semua *p-value* 
+yang lebih besar dari taraf nyata 5% sehingga tak tolak $H_0$ dan
+menandakan bahwa ragam sisaan homogen artinya dengan model ARCH sudah mampu menyelesaikan masalah heteroskedastisitas.
+
+### 4.4.4 Pengecekan overfitting ARIMAX(1,1,2)-ARCH(2)
+```{r}
+model.arch2<-ugarchspec(variance.model = list(model = "sGARCH", garchOrder = c(2,0)),  mean.model = list(armaOrder = c(1, 2),external.regressors = as.matrix(kurstraindif)))
+
+m.12<-ugarchfit(spec=model.arch2,data=traindif, out.sample = 40)
+m.12
+```
+Terlihat bahwa tidak semua parameter signifikan sehingga model ARIMAX(1,1,2)-ARCH(2) tidak dipilih 
+
+## 4.5 Akurasi ARIMAX(1,1,2)-ARCH(1)
+```{r}
+# belum nemu sintaks yang benar karena differencing
+sisaan.arch <- residuals(m.11)
+mape_manual <- mean(abs(sisaan.arch / fitted(m.11))) * 100
+cat("MAPE (Manual):",mape_manual, "\n")
+```
+
+## 4.6 Peramalan ARIMAX(1,1,2)-ARCH(1)
+
+```{r}
+forc = ugarchforecast(m.11, n.ahead = 17,n.roll=0, external.forecasts = list(mregfor = matrix_kurs_test_diff , vregfor = NULL))
+print(forc)
+plot(forc,which=1)
+pt_1 <- data.train[length(data.train)] #nilai akhir data latih
+hasil.forc.Diff <- forc@forecast$seriesFor[,1]
+hasil.arch <- diffinv(hasil.forc.Diff, differences = 1) + pt_1
+```
+
+```{r}
+perbandingan.arch<-matrix(data=c(head(data.test, n=length(data.test)), hasil.arch[2:19]),
+                     nrow = length(data.test), ncol = 2)
+colnames(perbandingan.arch)<-c("Aktual","Hasil Forecast")
+perbandingan.arch
+akurasi.arch <- accuracy(ts(hasil.arch[2:19]), head(data.test, n=length(data.test)))
+akurasi.arch
+```
+
+# 5. Autoregressive Distributed Lag (ARDL)
+Semua data sudah stasioner dilakukan pengujian diatas. Syarat penggunaan ARDL hanya diperbolehkan differecting maksimal 1 kali dan data IHSG serta kurs dolar sudah memenuhi. Oleh karena itu, akan dilanjutkan analisis selanjutnya. 
+
+## 5.1 Uji Kointegrasi 
+```{r}
+datakoin <- ts(data.frame(train.trans,kurs.train))
+modelkoin <- lm(datakoin[, 1] ~ datakoin[, 2] + 1) 
+bound_result <- ur.df(residuals(modelkoin), type = "trend", lags = 5) 
+bound_result
+critical_values <- bound_result@cval
+critical_values
+```
+Hasil yang diperoleh adalah nilai F hitung < nilai F kritis yaitu sebesar  2.6849 < 4.75  Maka hasil tersebut menunjukkan bahwa kita menerima H0, yang berarti data-data tersebut tidak memiliki nilai kointegrasi. Artinya, terdapat tidak  hubungan jangka panjang antara peubah endogen dan eksogen.
+
+## 5.2 Penentuan lag optimum
+```{r}
+library(urca)
+dff <- ardlBoundOrders(data = data.frame(train.trans, kurs.train), ic="AIC", formula = train.trans~ kurs.train)
+min_p=c()
+for(i in 1:15){
+  min_p[i]=min(dff$Stat.table[[i]])
+}
+q_opt=which(min_p==min(min_p))
+p_opt=which(dff$Stat.table[[q_opt]]==min(dff$Stat.table[[q_opt]]))
+data.frame("q_optimum" = q_opt, "p_optimum" = p_opt, "AIC"=dff$min.Stat)
+```
+
+Dari tabel di atas, dapat terlihat bahwa nilai AIC terendah didapat ketika p = 1 dan q = 15, yaitu sebesar 10512.3. Artinya, model autoregressive optimum didapat ketika p = 1 dan q = 15
+
+## 5.3 Pembentukan Model ARDL
+```{r}
+model.ardl = ardlDlm(x = as.vector(kurs.train), y = as.vector(train.trans), p = 1, q = 15)
+summary(model.ardl)
+```
+
+## 5.5 Uji Diagnostik Model ARDL
+### 5.5.1 Sisaan Menyebar Normal 
+```{r}
+sisaan.ardl <- residuals(model.ardl)
+ks.test(sisaan.ardl,"pnorm")
+```
+
+Pada tahapan ini uji formal yang digunakan untuk normalitas adalah uji Kolmogorov-Smirnov (KS). Hipotesis pada uji KS adalah sebagai
+berikut.
+
+$H_0$ : Sisaan menyebar normal
+
+$H_1$ : Sisaan tidak menyebar normal
+
+Berdasarkan uji KS tersebut, didapat *p-value* sebesar kurang dari 2.2e-16 < 5% sehingga tolak $H_0$ dan menandakan bahwa sisaan tidak menyebar normal. Hal ini sesuai dengan hasil eksplorasi menggunakan plot kuantil-kuantil normal.
+
+### 5.5.2 Sisaan saling bebas/tidak ada autokorelasi 
+```{r}
+Box.test(sisaan.ardl, type = "Ljung")  #tak tolak H0 > sisaan saling bebas
+```
+
+
+
+Selanjutnya akan dilakukan uji formal untuk kebebasan sisaan menggunakan
+uji Ljung-Box. Hipotesis yang digunakan adalah sebagai berikut.
+
+$H_0$ : Sisaan saling bebas
+
+$H_1$ : Sisaan tidak tidak saling bebas
+
+Berdasarkan uji Ljung-Box tersebut, didapat *p-value* sebesar 0.9744 yang lebih besar dari taraf nyata 5% sehingga tak tolak $H_0$ dan menandakan bahwa sisaan saling bebas.
+
+### 5.5.3 Sisaan homogen 
+```{r}
+Box.test((sisaan.ardl)^2, type = "Ljung")  #tak tolak H0 > sisaan homogen
+```
+
+Hipotesis yang digunakan untuk uji kehomogenan ragam adalah sebagai
+berikut.
+
+$H_0$ : Ragam sisaan homogen
+
+$H_1$ : Ragam sisaan tidak homogen
+
+Berdasarkan uji Ljung-Box terhadap sisaan kuadrat tersebut, didapat
+*p-value* sebesar 0.00942 yang lebih kecil dari taraf nyata 5% sehingga tolak $H_0$ dan menandakan bahwa ragam sisaan tidak homogen. Akan tetapi, jika digunakan taraf nyata 1% menghasilkan  tolak $H_0$ sehingga menandakan bahwa ragam sisaan tidak homogen.
+
+## 5.5 Akurasi Model ARDL
+```{r}
+# Hitung MAPE secara manual
+mape_manual <- mean(abs(sisaan.ardl / fitted(model.ardl))) * 100
+cat("MAPE (Manual):", mape_manual, "\n")
+```
+## 5.6 Peramalan Model ARDL
+```{r}
+ramalan<- dLagM::forecast(model.ardl, x = kurs.test, h = 18) 
+ramalan
+data.ramalan <- ramalan$forecasts
+pt_1 <- data.train[length(data.train)] #nilai akhir data latih
+hasil.ardl <- data.ramalan^(1/4)
+hasil.ardl
+```
+
+```{r}
+perbandingan.ardl<-matrix(data=c(head(data.test, n=length(data.test)), hasil.ardl),
+                     nrow = length(data.test), ncol = 2)
+colnames(perbandingan.ardl)<-c("Aktual","Hasil Forecast")
+perbandingan.ardl
+akurasi.ardl <- accuracy(ts(hasil.ardl), head(data.test, n=length(data.test)))
+akurasi.ardl
+```
+
+# 6. Perbandingan ARIMAX-ARCH dan ARDL
+```{r}
+par(mfrow=c(1,2))
+hasil.forch.arch <- as.data.frame(hasil.arch[c(2:18)])
+datadate2 <- data$Date
+datadate2 <- as.data.frame(datadate2[c(173:189)])
+dataplot2 <- cbind(datadate2, hasil.forch.arch)
+dataplot2 <- as.data.frame(dataplot2)
+colnames(dataplot2)<- c("date","forecast arch")
+ggplot(dataplot2, aes(x = date, y = `forecast arch`)) +
+  geom_line(color = "black", linetype = "solid", size = 1) +
+  geom_point(color = "blue", size = 3) +
+  labs(title = "Plot Time Series Harga Penutupan IHSG", x = "Tahun", y = "Harga Penutupan IHSG") +
+  theme_minimal()+
+  theme(plot.title = element_text(size = 20, face = "bold", hjust =0.5))
+
+hasil.forch.ardl <- as.data.frame(hasil.ardl)
+datadate3 <- data$Date
+datadate3 <- as.data.frame(datadate3[c(172:189)])
+dataplot3 <- cbind(datadate3, hasil.forch.ardl)
+dataplot3 <- as.data.frame(dataplot3)
+colnames(dataplot3)<- c("date","forecast ardl")
+ggplot(dataplot3, aes(x = date, y = `forecast ardl`)) +
+  geom_line(color = "black", linetype = "solid", size = 1) +
+  geom_point(color = "blue", size = 3) +
+  labs(title = "Plot Time Series Harga Penutupan IHSG", x = "Tahun", y = "Harga Penutupan IHSG") +
+  theme_minimal()+
+  theme(plot.title = element_text(size = 20, face = "bold", hjust =0.5))
+```
+
+```{r}
+perbandingan_arimax_ardl <- data.frame(Aktual=c(test.ts),
+                           Predik_ARIMAX = hasil.arch[c(2,19)],
+                           Predik_ARDL = hasil.ardl)
+perbandingan_arimax_ardl
+akurasi1<- data.frame(accuracy(ts(hasil.arch[2:19]), head(data.test, n=length(data.test))))
+akurasi2<- data.frame(accuracy(ts(hasil.ardl), head(data.test, n=length(data.test))))
+akurasi <- rbind(akurasi1,akurasi2)
+rownames(akurasi)<- c("ARIMAX","ARDL")
+print(akurasi)
+```
+Berdasarkan nilai akurasi kedua model di atas, terlihat MAPE ARIMAX(2,1,2) menghasilkan MAPE yang lebih kecil dibandingan ARDL(15,8). Oleh karena itu, model ARIMAX(2,1,2) dianggap lebih baik dalam meramalkan harga penutupan IHSG dengan peubah eksogennya nya kurs dolar.
+
+# 7. Peramalan 22 Periode Ke Depan
+```{r}
+forc = ugarchforecast(m.11, data = data.ts, n.ahead = 22,n.roll=0,  external.forecasts = list(mregfor = kursdif, vregfor = NULL))
+print(forc)
+plot(forc,which=1)
+```
+
+```{r}
+datafix<-data_close[nrow(data_close),]
+pt_2 <- data.ts[length(data.ts)] 
+hasil.forc.Diff2 <- forc@forecast$seriesFor[,1]
+peramalanfix <- diffinv(hasil.forc.Diff2, differences = 1) + pt_2
+```
+
+```{r}
+forecast <- as.data.frame(peramalanfix)
+datadate4 <- data.frame(
+  date = seq(as.Date("2023-11-20"), as.Date("2024-04-22"), by = "weeks")
+)
+dataplot4 <- cbind(datadate4, forecast)
+dataplot4 <- as.data.frame(dataplot4)
+colnames(dataplot4)<- c("date","forecast")
+ggplot(dataplot4, aes(x = date, y = `forecast`)) +
+  geom_line(color = "black", linetype = "solid", size = 1) +
+  geom_point(color = "blue", size = 3) +
+  labs(title = "Plot Time Series Harga Penutupan IHSG", x = "Tahun", y = "Harga Penutupan IHSG") +
+  theme_minimal()+
+  theme(plot.title = element_text(size = 20, face = "bold", hjust =0.5))
+```
+
